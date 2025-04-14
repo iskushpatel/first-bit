@@ -1,17 +1,28 @@
 name: GH Pages
 
 on:
-  push:
-    branches:
-      - master
+  # push:
+  #   branches:
+  #     - master
+  workflow_dispatch:
   workflow_run:
     workflows: ["Merge Bot"]
     types: completed
 
 jobs:
-  Deploy:
+  deploy:
+
     runs-on: ubuntu-latest
     name: Build and Deploy
+
+    permissions:
+      pages: write      
+      id-token: write  
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
     steps:
     - name: Checkout
       uses: actions/checkout@v2
@@ -24,13 +35,19 @@ jobs:
     - name: Build DB
       uses: ./.github/actions/buildDB
       with:
-        GITHUB_TOKEN: ${{ secrets.AVATAR_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build static site
       run: yarn run build
 
-    - name: Deploy
-      uses: peaceiris/actions-gh-pages@v3
+    - name: Upload static files as artifact
+      id: upload
+      uses: actions/upload-pages-artifact@v3 
       with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./dist
+        path: ./dist
+
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
+      with:
+        path: ./dist
